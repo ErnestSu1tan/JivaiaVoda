@@ -1,12 +1,11 @@
 #include <WiFi.h>
+#include <WiFiManager.h>
 #include <PubSubClient.h>
 #include <GyverDS18.h>
 #include <Preferences.h>
 
 Preferences preferences;
 
-const char* ssid           = "Ernest";
-const char* password       = "01072005";
 const char* mqtt_server    = "dev.rightech.io";
 const char* mqtt_client_id = "mqtt-ergunxer-xtu5gl";
 
@@ -61,16 +60,19 @@ int medianFilter(int arr[], int len) {
 }
 
 void setupWifi() {
-  delay(10);
-  Serial.println("\nConnecting to WiFi: " + String(ssid));
   WiFi.mode(WIFI_STA);
   WiFi.setTxPower(WIFI_POWER_8_5dBm);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+
+  WiFiManager wm;
+  wm.setConfigPortalTimeout(180);
+
+  if (!wm.autoConnect("WaterMonitor-AP")) {
+    Serial.println("WiFi config timeout, restarting...");
+    delay(3000);
+    ESP.restart();
   }
-  Serial.println("\nWiFi connected. IP: " + WiFi.localIP().toString());
+
+  Serial.println("WiFi connected. IP: " + WiFi.localIP().toString());
 }
 
 void mqttReconnect() {
@@ -143,7 +145,9 @@ void publishSensors(unsigned long now) {
             + 857.39 * vCompensated) * 0.5;
 
   client.publish(topic_temp,     String(temperature, 1).c_str());
-  client.publish(topic_purity,   String(tdsValue, 0).c_str());
+
+
+client.publish(topic_purity,   String(tdsValue, 0).c_str());
   client.publish(topic_capacity, String(totalVolume, 2).c_str());
 
   Serial.printf("T: %.1f | TDS: %.0f | Vol: %.2f L\n", temperature, tdsValue, totalVolume);
